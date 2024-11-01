@@ -45,12 +45,16 @@ trait FrameAllocator {
 }
 /// an implementation for frame allocator
 pub struct StackFrameAllocator {
-    current: usize,
-    end: usize,
-    recycled: Vec<usize>,
+    /// current PhysPageNum
+    pub current: usize,
+    /// end PhysPageNum
+    pub end: usize,
+    /// recycled PhysPageNum
+    pub recycled: Vec<usize>,
 }
 
 impl StackFrameAllocator {
+    ///init
     pub fn init(&mut self, l: PhysPageNum, r: PhysPageNum) {
         self.current = l.0;
         self.end = r.0;
@@ -107,7 +111,7 @@ pub fn init_frame_allocator() {
 /// Allocate a physical page frame in FrameTracker style
 pub fn frame_alloc() -> Option<FrameTracker> {
     FRAME_ALLOCATOR
-        .exclusive_access()
+        .exclusive_access() //独占访问
         .alloc()
         .map(FrameTracker::new)
 }

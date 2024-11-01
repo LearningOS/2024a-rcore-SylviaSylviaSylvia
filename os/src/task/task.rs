@@ -28,6 +28,15 @@ pub struct TaskControlBlock {
 
     /// Program break
     pub program_brk: usize,
+
+    /// The time when the task first started
+    pub start_time: usize,
+
+    /// Indicates whether this is the first run of the task
+    pub first_run: bool,
+
+    /// Array to store the counts of system calls made by the task
+    pub syscall_times:[u32;8],
 }
 
 impl TaskControlBlock {
@@ -63,6 +72,9 @@ impl TaskControlBlock {
             base_size: user_sp,
             heap_bottom: user_sp,
             program_brk: user_sp,
+            start_time: 0,
+            first_run: true,
+            syscall_times:[0;8],
         };
         // prepare TrapContext in user space
         let trap_cx = task_control_block.get_trap_cx();

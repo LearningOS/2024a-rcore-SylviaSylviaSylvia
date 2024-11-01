@@ -8,13 +8,21 @@ use bitflags::*;
 bitflags! {
     /// page table entry flags
     pub struct PTEFlags: u8 {
+        /// Valid bit
         const V = 1 << 0;
+        /// Readable bit
         const R = 1 << 1;
+        /// Writable bit
         const W = 1 << 2;
+        /// Execute bit
         const X = 1 << 3;
+        /// User mode bit
         const U = 1 << 4;
+        /// Global bit
         const G = 1 << 5;
+        /// Accessed bit
         const A = 1 << 6;
+        /// Dirty bit
         const D = 1 << 7;
     }
 }
@@ -108,7 +116,7 @@ impl PageTable {
         result
     }
     /// Find PageTableEntry by VirtPageNum
-    fn find_pte(&self, vpn: VirtPageNum) -> Option<&mut PageTableEntry> {
+    pub fn find_pte(&self, vpn: VirtPageNum) -> Option<&mut PageTableEntry> {
         let idxs = vpn.indexes();
         let mut ppn = self.root_ppn;
         let mut result: Option<&mut PageTableEntry> = None;
