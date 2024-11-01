@@ -6,7 +6,7 @@ use crate::{
         TaskStatus,TASK_MANAGER
     },
     timer::get_time_us,
-    mm::{VirtAddr,VirtPageNum,PhysAddr,MapPermission,frame_allocator::*,PTEFlags}
+    mm::{VirtAddr,VirtPageNum,PhysAddr,MapPermission,frame_allocator::*}
 };
 
 #[repr(C)]
@@ -58,12 +58,12 @@ pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
     let mut inner = TASK_MANAGER.inner.exclusive_access();
     let current = inner.current_task;
     inner.tasks[current].syscall_times[3] += 1;
-    drop(inner);
+
     let us = get_time_us();
     let ts_addr = VirtAddr::from(ts as usize);
     let ts_page_num = VirtPageNum::from(ts_addr.floor());
     let ts_offset = ts_addr.page_offset();
-    let inner = TASK_MANAGER.inner.exclusive_access();
+
     let current = inner.current_task;
     let phys_page_num = inner.tasks[current].memory_set.translate(ts_page_num).unwrap().ppn();
     
@@ -100,6 +100,7 @@ pub fn sys_task_info(ti: *mut TaskInfo) -> isize {
     let phys_ti = (phys_addr.0 + ti_offset) as *mut TaskInfo;
 
     unsafe {
+        (*(phys_ti)).status = inner.tasks[current].task_status;
         for i in 0..MAX_SYSCALL_NUM {
             if i != 64 && i != 93 && i != 124 && i !=214 && i != 215 && i != 222 && i != 169 && i != 410 {
                 (*(phys_ti)).syscall_times[i] = 0;
@@ -147,13 +148,17 @@ pub fn sys_mmap(start: usize, len: usize, port: usize) -> isize {
     let start_pagenum = VirtPageNum::from(start_addr);
     let end = start + len;
     let end_addr = VirtAddr::from(end);
-    let end_pagenum = VirtPageNum::from(end_addr.ceil());
+    //let end_pagenum = end_addr.ceil();
 
     let vir_memory_set = &mut inner.tasks[current].memory_set;
-    for i in (start_pagenum.0)..(end_pagenum.0){
-        let pte = vir_memory_set.page_table.find_pte(VirtPageNum::from(i));
+    for i in (start_pagenum.0)..(start_pagenum.0 + num_pages){
+        let pte = vir_memory_set.page_table.translate(VirtPageNum::from(i));
         match pte{
-            Some(_x) => {return -1;},
+            Some(pte) => {
+                if pte.is_valid(){
+                    return -1;
+                }
+            },
             None => {},
         }
     }
@@ -168,22 +173,7 @@ pub fn sys_mmap(start: usize, len: usize, port: usize) -> isize {
     if (port % 4) / 2 == 1{
         permissions = permissions | MapPermission::W;
     }
-
-    let mut flags = PTEFlags::V | PTEFlags::U;
-    if port / 4 == 1{
-        flags = flags | PTEFlags::X;
-    }
-    if port % 2 == 1{
-        flags = flags | PTEFlags::R;
-    }
-    if (port % 4) / 2 == 1{
-        flags = flags | PTEFlags::W;
-    }
-
-    for i in 0..num_pages{
-        let frame = frame_alloc().unwrap();
-        vir_memory_set.page_table.map(VirtPageNum::from(start_pagenum.0 + i),frame.ppn,flags);
-    }
+    
     vir_memory_set.insert_framed_area(start_addr,end_addr,permissions);
 
     drop(inner);
@@ -213,24 +203,28 @@ pub fn sys_munmap(start: usize, len: usize) -> isize {
             Some(_x) => {},
             None => {return -1;},
         }
-    }
-
-    for i in 0..num_pages{
-        vir_memory_set.page_table.unmap(VirtPageNum::from(start_pagenum.0 + i));
-    }
+    }  
     drop(inner);
-
     let mut inner = TASK_MANAGER.inner.exclusive_access();
     let current = inner.current_task;
-    let areas = &mut inner.tasks[current].memory_set.areas;
+    let memory_set = &mut inner.tasks[current].memory_set;
+    let areas = &mut memory_set.areas;
+    let page_table = &mut memory_set.page_table;
+    let mut ok:bool = false;
     for i in 0..areas.len(){
         let range = areas[i].vpn_range;
-        if range.l.0 == start_pagenum.0 {
-            areas.pop();
+        if range.l.0 == start_pagenum.0 && range.r.0 == start_pagenum.0 + num_pages{
+            areas[i].unmap(page_table);
+            areas.remove(i);
+            ok = true;
             break;
         }
     }
+    if ok == false{
+        return -1;
+    }
     drop(inner);
+
     0
 }
 
