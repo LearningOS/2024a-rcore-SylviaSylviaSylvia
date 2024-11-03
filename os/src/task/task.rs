@@ -36,6 +36,7 @@ impl TaskControlBlock {
     }
 }
 
+/// Mutable
 pub struct TaskControlBlockInner {
     /// The physical page number of the frame where the trap context is placed
     pub trap_cx_ppn: PhysPageNum,
@@ -68,6 +69,18 @@ pub struct TaskControlBlockInner {
 
     /// Program break
     pub program_brk: usize,
+
+    /// The time when the task first started
+    pub start_time: usize,
+
+    /// Indicates whether this is the first run of the task
+    pub first_run: bool,
+    
+    /// Array to store the counts of system calls made by the task
+    pub syscall_times:[u32;15],
+
+    /// priority
+    pub priority: isize,
 }
 
 impl TaskControlBlockInner {
@@ -82,6 +95,7 @@ impl TaskControlBlockInner {
     fn get_status(&self) -> TaskStatus {
         self.task_status
     }
+    /// is_zomie?
     pub fn is_zombie(&self) -> bool {
         self.get_status() == TaskStatus::Zombie
     }
@@ -118,6 +132,10 @@ impl TaskControlBlock {
                     exit_code: 0,
                     heap_bottom: user_sp,
                     program_brk: user_sp,
+                    start_time: 0,
+                    first_run: true,
+                    syscall_times:[0;15],
+                    priority: 1,
                 })
             },
         };
@@ -191,6 +209,10 @@ impl TaskControlBlock {
                     exit_code: 0,
                     heap_bottom: parent_inner.heap_bottom,
                     program_brk: parent_inner.program_brk,
+                    start_time: 0,
+                    first_run: true,
+                    syscall_times:[0;15],
+                    priority: parent_inner.priority,
                 })
             },
         });

@@ -9,6 +9,7 @@ use super::{fetch_task, TaskStatus};
 use super::{TaskContext, TaskControlBlock};
 use crate::sync::UPSafeCell;
 use crate::trap::TrapContext;
+use crate::timer::get_time_ms;
 use alloc::sync::Arc;
 use lazy_static::*;
 
@@ -59,6 +60,9 @@ pub fn run_tasks() {
             let idle_task_cx_ptr = processor.get_idle_task_cx_ptr();
             // access coming task TCB exclusively
             let mut task_inner = task.inner_exclusive_access();
+            if task_inner.first_run == true {
+                task_inner.start_time = get_time_ms();
+            }
             let next_task_cx_ptr = &task_inner.task_cx as *const TaskContext;
             task_inner.task_status = TaskStatus::Running;
             // release coming task_inner manually
