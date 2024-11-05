@@ -44,12 +44,16 @@ trait FrameAllocator {
 }
 /// an implementation for frame allocator
 pub struct StackFrameAllocator {
-    current: usize,
-    end: usize,
-    recycled: Vec<usize>,
+    /// current
+    pub current: usize,
+    /// end
+    pub end: usize,
+    /// recycled
+    pub recycled: Vec<usize>,
 }
 
 impl StackFrameAllocator {
+    /// init
     pub fn init(&mut self, l: PhysPageNum, r: PhysPageNum) {
         self.current = l.0;
         self.end = r.0;

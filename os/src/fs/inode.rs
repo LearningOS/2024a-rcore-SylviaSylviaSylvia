@@ -13,6 +13,7 @@ use alloc::vec::Vec;
 use bitflags::*;
 use easy_fs::{EasyFileSystem, Inode};
 use lazy_static::*;
+use crate::fs::{Stat,StatMode};
 
 /// inode in memory
 /// A wrapper around a filesystem inode
@@ -55,6 +56,7 @@ impl OSInode {
 }
 
 lazy_static! {
+    /// ROOT_INODE
     pub static ref ROOT_INODE: Arc<Inode> = {
         let efs = EasyFileSystem::open(BLOCK_DEVICE.clone());
         Arc::new(EasyFileSystem::root_inode(&efs))
@@ -154,5 +156,31 @@ impl File for OSInode {
             total_write_size += write_size;
         }
         total_write_size
+    }
+    fn get_stat(&self) -> Stat{
+        let inner = self.inner.exclusive_access();
+        let inode = &inner.inode;
+
+        let (mode,nlink) = inode.read_disk_inode(|disk_inode| {
+            if disk_inode.is_dir(){
+                (StatMode::DIR,disk_inode.nlink_num)
+            }
+            else if disk_inode.is_file(){
+                (StatMode::FILE,disk_inode.nlink_num)
+            }
+            else{
+                (StatMode::NULL,disk_inode.nlink_num)
+            }
+            
+        });   
+        let new_stat = Stat{
+            dev: 0,
+            ino: 0,
+            mode,
+            nlink,
+            pad: [0;7],
+        };
+        drop(inner);
+        new_stat
     }
 }

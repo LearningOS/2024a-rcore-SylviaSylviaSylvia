@@ -3,6 +3,7 @@ use alloc::collections::VecDeque;
 use alloc::sync::Arc;
 use lazy_static::*;
 use spin::Mutex;
+
 /// Cached block inside memory
 pub struct BlockCache {
     /// cached block data
@@ -32,6 +33,7 @@ impl BlockCache {
         &self.cache[offset] as *const _ as usize
     }
 
+    /// get_ref
     pub fn get_ref<T>(&self, offset: usize) -> &T
     where
         T: Sized,
@@ -42,6 +44,7 @@ impl BlockCache {
         unsafe { &*(addr as *const T) }
     }
 
+    /// get_mut
     pub fn get_mut<T>(&mut self, offset: usize) -> &mut T
     where
         T: Sized,
@@ -53,14 +56,17 @@ impl BlockCache {
         unsafe { &mut *(addr as *mut T) }
     }
 
+    /// read
     pub fn read<T, V>(&self, offset: usize, f: impl FnOnce(&T) -> V) -> V {
         f(self.get_ref(offset))
     }
 
+    /// modify
     pub fn modify<T, V>(&mut self, offset: usize, f: impl FnOnce(&mut T) -> V) -> V {
         f(self.get_mut(offset))
     }
 
+    /// sync
     pub fn sync(&mut self) {
         if self.modified {
             self.modified = false;
@@ -77,17 +83,20 @@ impl Drop for BlockCache {
 /// Use a block cache of 16 blocks
 const BLOCK_CACHE_SIZE: usize = 16;
 
+/// BlockCacheManager
 pub struct BlockCacheManager {
     queue: VecDeque<(usize, Arc<Mutex<BlockCache>>)>,
 }
 
 impl BlockCacheManager {
+    /// new
     pub fn new() -> Self {
         Self {
             queue: VecDeque::new(),
         }
     }
 
+    /// get_block_cache
     pub fn get_block_cache(
         &mut self,
         block_id: usize,

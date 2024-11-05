@@ -64,6 +64,8 @@ pub struct TaskControlBlockInner {
 
     /// It is set when active exit or execution error occurs
     pub exit_code: i32,
+
+    /// file discriptor table
     pub fd_table: Vec<Option<Arc<dyn File + Send + Sync>>>,
 
     /// Heap bottom
@@ -71,6 +73,18 @@ pub struct TaskControlBlockInner {
 
     /// Program break
     pub program_brk: usize,
+
+    /// The time when the task first started
+    pub start_time: usize,
+
+    /// Indicates whether this is the first run of the task
+    pub first_run: bool,
+    
+    /// Array to store the counts of system calls made by the task
+    pub syscall_times:[u32;15],
+
+    /// priority
+    pub priority: isize,
 }
 
 impl TaskControlBlockInner {
@@ -135,6 +149,10 @@ impl TaskControlBlock {
                     ],
                     heap_bottom: user_sp,
                     program_brk: user_sp,
+                    start_time:0,
+                    first_run:true,
+                    syscall_times:[0;15],
+                    priority:1,
                 })
             },
         };
@@ -216,6 +234,10 @@ impl TaskControlBlock {
                     fd_table: new_fd_table,
                     heap_bottom: parent_inner.heap_bottom,
                     program_brk: parent_inner.program_brk,
+                    start_time: 0,
+                    first_run: true,
+                    syscall_times: [0;15],
+                    priority: parent_inner.priority,
                 })
             },
         });

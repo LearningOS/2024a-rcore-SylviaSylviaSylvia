@@ -10,8 +10,10 @@ use spin::{Mutex, MutexGuard};
 pub struct Inode {
     block_id: usize,
     block_offset: usize,
-    fs: Arc<Mutex<EasyFileSystem>>,
-    block_device: Arc<dyn BlockDevice>,
+    /// filesystem
+    pub fs: Arc<Mutex<EasyFileSystem>>,
+    /// blockdevice
+    pub block_device: Arc<dyn BlockDevice>,
 }
 
 impl Inode {
@@ -30,19 +32,19 @@ impl Inode {
         }
     }
     /// Call a function over a disk inode to read it
-    fn read_disk_inode<V>(&self, f: impl FnOnce(&DiskInode) -> V) -> V {
+    pub fn read_disk_inode<V>(&self, f: impl FnOnce(&DiskInode) -> V) -> V {
         get_block_cache(self.block_id, Arc::clone(&self.block_device))
             .lock()
             .read(self.block_offset, f)
     }
     /// Call a function over a disk inode to modify it
-    fn modify_disk_inode<V>(&self, f: impl FnOnce(&mut DiskInode) -> V) -> V {
+    pub fn modify_disk_inode<V>(&self, f: impl FnOnce(&mut DiskInode) -> V) -> V {
         get_block_cache(self.block_id, Arc::clone(&self.block_device))
             .lock()
             .modify(self.block_offset, f)
     }
     /// Find inode under a disk inode by name
-    fn find_inode_id(&self, name: &str, disk_inode: &DiskInode) -> Option<u32> {
+    pub fn find_inode_id(&self, name: &str, disk_inode: &DiskInode) -> Option<u32> {
         // assert it is a directory
         assert!(disk_inode.is_dir());
         let file_count = (disk_inode.size as usize) / DIRENT_SZ;
@@ -74,7 +76,7 @@ impl Inode {
         })
     }
     /// Increase the size of a disk inode
-    fn increase_size(
+    pub fn increase_size(
         &self,
         new_size: u32,
         disk_inode: &mut DiskInode,
