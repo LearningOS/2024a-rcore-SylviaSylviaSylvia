@@ -103,7 +103,8 @@ pub const SYSCALL_CONDVAR_WAIT: usize = 473;
 
 mod fs;
 mod process;
-mod sync;
+/// sync
+pub mod sync;
 mod thread;
 
 use fs::*;

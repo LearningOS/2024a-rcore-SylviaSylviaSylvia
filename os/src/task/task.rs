@@ -36,11 +36,12 @@ pub struct TaskControlBlockInner {
     pub trap_cx_ppn: PhysPageNum,
     /// Save task context
     pub task_cx: TaskContext,
-
     /// Maintain the execution status of the current process
     pub task_status: TaskStatus,
+   
     /// It is set when active exit or execution error occurs
     pub exit_code: Option<i32>,
+
 }
 
 impl TaskControlBlockInner {
@@ -91,3 +92,4 @@ pub enum TaskStatus {
     /// blocked
     Blocked,
 }
+

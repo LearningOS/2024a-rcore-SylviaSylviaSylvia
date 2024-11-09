@@ -1,11 +1,12 @@
 use crate::{
     config::MAX_SYSCALL_NUM,
     fs::{open_file, OpenFlags},
-    mm::{translated_ref, translated_refmut, translated_str},
+    mm::{translated_ref, translated_refmut, translated_str, VirtPageNum, VirtAddr, PhysAddr},
     task::{
         current_process, current_task, current_user_token, exit_current_and_run_next, pid2process,
         suspend_current_and_run_next, SignalFlags, TaskStatus,
     },
+    timer::get_time_us,
 };
 use alloc::{string::String, sync::Arc, vec::Vec};
 
@@ -162,12 +163,34 @@ pub fn sys_kill(pid: usize, signal: u32) -> isize {
 /// YOUR JOB: get time with second and microsecond
 /// HINT: You might reimplement it with virtual memory management.
 /// HINT: What if [`TimeVal`] is splitted by two pages ?
-pub fn sys_get_time(_ts: *mut TimeVal, _tz: usize) -> isize {
+pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
     trace!(
         "kernel:pid[{}] sys_get_time NOT IMPLEMENTED",
         current_task().unwrap().process.upgrade().unwrap().getpid()
     );
-    -1
+    let current = current_task().unwrap();
+
+    let us = get_time_us();
+    let ts_addr = VirtAddr::from(ts as usize);
+    let ts_page_num = VirtPageNum::from(ts_addr.floor());
+    let ts_offset = ts_addr.page_offset();
+
+    let process = current_process();
+    let process_inner = process.inner_exclusive_access();
+    let phys_page_num = process_inner.memory_set.translate(ts_page_num).unwrap().ppn();
+    
+    let phys_addr = PhysAddr::from(phys_page_num);
+    let phys_ts = (phys_addr.0 + ts_offset) as *mut TimeVal;
+
+    unsafe {
+        *(phys_ts) = TimeVal {
+            sec: us / 1_000_000,
+            usec: us % 1_000_000,
+        };
+    }
+    drop(process_inner);
+    drop(current);
+    0
 }
 
 /// task_info syscall

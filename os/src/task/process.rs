@@ -9,6 +9,7 @@ use crate::fs::{File, Stdin, Stdout};
 use crate::mm::{translated_refmut, MemorySet, KERNEL_SPACE};
 use crate::sync::{Condvar, Mutex, Semaphore, UPSafeCell};
 use crate::trap::{trap_handler, TrapContext};
+use crate::syscall::sync::ResourceAllocation;
 use alloc::string::String;
 use alloc::sync::{Arc, Weak};
 use alloc::vec;
@@ -49,6 +50,12 @@ pub struct ProcessControlBlockInner {
     pub semaphore_list: Vec<Option<Arc<Semaphore>>>,
     /// condvar list
     pub condvar_list: Vec<Option<Arc<Condvar>>>,
+    /// resources
+    pub resources: ResourceAllocation,
+    /// enable deadlock detect
+    pub enable_deadlock_detect: bool,
+    /// is deadlocked?
+    pub deadlocked: bool,
 }
 
 impl ProcessControlBlockInner {
@@ -119,6 +126,9 @@ impl ProcessControlBlock {
                     mutex_list: Vec::new(),
                     semaphore_list: Vec::new(),
                     condvar_list: Vec::new(),
+                    resources: ResourceAllocation::new(),
+                    enable_deadlock_detect: false,
+                    deadlocked: false,
                 })
             },
         });
@@ -245,6 +255,9 @@ impl ProcessControlBlock {
                     mutex_list: Vec::new(),
                     semaphore_list: Vec::new(),
                     condvar_list: Vec::new(),
+                    resources: ResourceAllocation::new(),
+                    enable_deadlock_detect: false,
+                    deadlocked: false,
                 })
             },
         });
@@ -273,6 +286,7 @@ impl ProcessControlBlock {
         let trap_cx = task_inner.get_trap_cx();
         trap_cx.kernel_sp = task.kstack.get_top();
         drop(task_inner);
+        drop(parent);
         insert_into_pid2process(child.getpid(), Arc::clone(&child));
         // add this thread to scheduler
         add_task(task);

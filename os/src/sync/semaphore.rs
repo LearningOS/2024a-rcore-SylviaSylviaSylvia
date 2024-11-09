@@ -1,7 +1,8 @@
 //! Semaphore
 
 use crate::sync::UPSafeCell;
-use crate::task::{block_current_and_run_next, current_task, wakeup_task, TaskControlBlock};
+use crate::task::{block_current_and_run_next, current_task, 
+    wakeup_task, TaskControlBlock};
 use alloc::{collections::VecDeque, sync::Arc};
 
 /// semaphore structure
@@ -10,8 +11,11 @@ pub struct Semaphore {
     pub inner: UPSafeCell<SemaphoreInner>,
 }
 
+/// semaphoreinner
 pub struct SemaphoreInner {
+    /// the count of this semaphore
     pub count: isize,
+    /// wait thread
     pub wait_queue: VecDeque<Arc<TaskControlBlock>>,
 }
 
@@ -39,6 +43,7 @@ impl Semaphore {
                 wakeup_task(task);
             }
         }
+        drop(inner);
     }
 
     /// down operation of semaphore
@@ -50,6 +55,9 @@ impl Semaphore {
             inner.wait_queue.push_back(current_task().unwrap());
             drop(inner);
             block_current_and_run_next();
+        }
+        else {
+            drop(inner);
         }
     }
 }

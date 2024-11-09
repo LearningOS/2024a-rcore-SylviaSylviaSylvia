@@ -33,6 +33,7 @@ impl Condvar {
         if let Some(task) = inner.wait_queue.pop_front() {
             wakeup_task(task);
         }
+        drop(inner);
     }
 
     /// blocking current task, let it wait on the condition variable
@@ -46,3 +47,4 @@ impl Condvar {
         mutex.lock();
     }
 }
+
