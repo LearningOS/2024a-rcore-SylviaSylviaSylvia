@@ -174,6 +174,7 @@ pub fn sys_mmap(start: usize, len: usize, port: usize) -> isize {
         permissions = permissions | MapPermission::W;
     }
     
+    // 群友环戊烷和乖乖是干饭王告诉我：insert_framed_area函数本身已进行了申请物理页，所以我不需要自己提前申请一次，这样会导致重复map
     vir_memory_set.insert_framed_area(start_addr,end_addr,permissions);
 
     drop(inner);
